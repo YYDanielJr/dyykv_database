@@ -40,7 +40,7 @@ void PackageResolver::generateReply(char* reply_buffer)
     *p = 0;
 }
 
-void PackageResolver::processPutPackage()
+bool PackageResolver::processPutPackage()
 {
     struct put_package
     {
@@ -62,16 +62,38 @@ void PackageResolver::processPutPackage()
     {
         package.value.push_back(raw_package[i]);
     }
-    // 
-    
+    // 接入database
+    return db_manager.put_f(package.key, package.value);
 }
 
-void PackageResolver::processDeletePackage()
+bool PackageResolver::processDeletePackage()
 {
-
+    unsigned int key_size;
+    std::string key;
+    // 解包
+    unsigned int* p = (unsigned int*)raw_package;
+    key_size = *p;
+    for(int i = 4; i < key_size + 4; i++)
+    {
+        key.push_back(raw_package[i]);
+    }
+    // 接入database
+    return db_manager.delete_f(key);
 }
 
-void PackageResolver::processGetPackage()
+std::string PackageResolver::processGetPackage()
 {
-
+    unsigned int key_size;
+    std::string key;
+    // 解包
+    unsigned int* p = (unsigned int*)raw_package;
+    key_size = *p;
+    for(int i = 4; i < key_size + 4; i++)
+    {
+        key.push_back(raw_package[i]);
+    }
+    // 接入database
+    std::string value;
+    value = db_manager.get_f(key);
+    return value;
 }

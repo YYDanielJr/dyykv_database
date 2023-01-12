@@ -1,6 +1,7 @@
 #pragma once
 //这一组文件里会存放解析包的相关代码，并连接到数据库。
 #include "Logger.h"
+#include "DataBase.h"
 #include <string>
 namespace header_info   //这个namespace里定义一个header结构体和一个package_type的枚举
 {
@@ -30,17 +31,12 @@ private:
     header_info::header reply_head;
     char raw_header[16];
     char raw_package[1008];
-    Logger logger;
 public:
     enum processor_exception
     {
         WRONG_MAGIC_NUMBER = 1234,
         UNKNOWN_REQUEST_TYPE = 0
-    };
-    PackageResolver()
-    {
-        logger.relink(thread_id_to_ulonglong(std::this_thread::get_id()), "dyykvdb.log");
-    }   
+    };  
     void processBuffer(char*);  //传入读到的原始缓冲区
     void processHead()
     {
@@ -53,17 +49,18 @@ public:
         {
             case header_info::PUT_REQUEST:
             {
-                processPutPackage();
+                bool returner = processPutPackage();
+
                 break;
             }
             case header_info::DELETE_REQUEST:
             {
-                processDeletePackage();
+                bool returner = processDeletePackage();
                 break;
             }
             case header_info::GET_REQUEST:
             {
-                processGetPackage();
+                std::string returner = processGetPackage();
                 break;
             }
             default:
@@ -73,8 +70,8 @@ public:
             }
         }
     }
-    void processPutPackage();
-    void processDeletePackage();
-    void processGetPackage();
+    bool processPutPackage();
+    bool processDeletePackage();
+    std::string processGetPackage();
     void generateReply(char*);  //生成回复（header+响应包），需要传入一个缓冲区，请将缓冲区的大小固定为1024
 };

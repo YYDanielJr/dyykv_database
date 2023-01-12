@@ -6,6 +6,7 @@
 #include <unistd.h> //sysconf(_SC_NPROCESSORS_ONLN)，获取系统可用核心数
 #include <cstdio>
 #include <mutex>
+#include <sstream>
 #include "ThreadPool.h"
 #include "Logger.h"
 #include "DataProcessor.h"

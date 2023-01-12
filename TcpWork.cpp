@@ -14,7 +14,6 @@ Connector::Connector(int domain, int type, int protocol, int max_link_in)
     pool_is_running = false;
     if_connection_open = false;
     max_link = max_link_in;
-    logger.relink(thread_id_to_ulonglong(std::this_thread::get_id()), "dyykvdb.log");   //初始化日志文件
     std::string temp;
     sock_for_listening = socket(domain, type, protocol); // 初始化socket，得到监听文件标识符
     if (sock_for_listening == -1)
@@ -76,12 +75,11 @@ void Connector::start_connection()
 
 void client_resolver(client_info* client_infomation_ptr)
 {
-    Logger logger_in_child_thread(thread_id_to_ulonglong(std::this_thread::get_id()), "dyykvdb.log");
     std::ostringstream msg;
     char ip[24] = {0};
     msg << "Connected to client " << inet_ntop(AF_INET, &client_infomation_ptr->client_addr.sin_addr.s_addr, ip, sizeof(ip)) << ":" << ntohs(client_infomation_ptr->client_addr.sin_port) << ".";
     std::string strmsg = msg.str();
-    logger_in_child_thread.info(strmsg);
+    logger.info(strmsg);
     while(1)
     {
         char buffer[1024] = {0};
