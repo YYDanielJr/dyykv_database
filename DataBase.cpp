@@ -115,7 +115,6 @@ void rw::save(std::vector<std::string>& key_value)
 
 bool database_manager::put_f(std::string& key, std::string& value)
 {
-    std::lock_guard<std::mutex> guarder(mtx);
     bool returner = db->put_db(key, value);
     database_file_manager->rw_put(key, value);
     return returner;
@@ -123,7 +122,6 @@ bool database_manager::put_f(std::string& key, std::string& value)
 
 bool database_manager::delete_f(std::string& key)
 {
-    std::lock_guard<std::mutex> guarder(mtx);
     bool returner = db->delete_db(key);
     database_file_manager->rw_delete(key);
     return returner;
@@ -131,7 +129,6 @@ bool database_manager::delete_f(std::string& key)
 
 std::string database_manager::get_f(std::string& key)
 {
-    std::lock_guard<std::mutex> guarder(mtx);
     std::string value = db->get_db(key);
     return value;
 }

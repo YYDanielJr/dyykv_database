@@ -3,6 +3,7 @@
 #include "Logger.h"
 #include "DataBase.h"
 #include <string>
+#include <mutex>
 namespace header_info   //这个namespace里定义一个header结构体和一个package_type的枚举
 {
     struct header   //Tcp通信的header
@@ -31,6 +32,7 @@ private:
     header_info::header reply_head;
     char raw_header[16];
     char raw_package[1008];
+    std::mutex pr_mtx;
 public:
     enum processor_exception
     {
@@ -38,38 +40,6 @@ public:
         UNKNOWN_REQUEST_TYPE = 0
     };  
     void processBuffer(char*);  //传入读到的原始缓冲区
-    void processHead()
-    {
-        if(head.magic_number != 1234)
-        {
-            logger.error("Received wrong magic number. Check if the connection is a valid one.");
-            throw(WRONG_MAGIC_NUMBER);
-        }
-        switch(head.p_type)
-        {
-            case header_info::PUT_REQUEST:
-            {
-                bool returner = processPutPackage();
-
-                break;
-            }
-            case header_info::DELETE_REQUEST:
-            {
-                bool returner = processDeletePackage();
-                break;
-            }
-            case header_info::GET_REQUEST:
-            {
-                std::string returner = processGetPackage();
-                break;
-            }
-            default:
-            {
-                logger.error("Unknown request type received from the client.");
-                throw(UNKNOWN_REQUEST_TYPE);
-            }
-        }
-    }
     bool processPutPackage();
     bool processDeletePackage();
     std::string processGetPackage();

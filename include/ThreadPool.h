@@ -74,7 +74,7 @@ public:
         not_empty_caller.notify_all();
         //析构函数把if_shutdown变为true，同时唤醒所有线程，这样所有线程就都不会被阻塞，直接运行到线程结束，所有线程回收。
     }
-    void worker()
+    void worker()   //线程池内任务工作函数
     {
         while(!if_shutdown)
         //只要线程池没有被shutdown，循环一直会运作

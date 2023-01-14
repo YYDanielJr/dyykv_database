@@ -1,9 +1,9 @@
 #pragma once
 //这一组文件里会存放网络通信的相关操作。
 #include <arpa/inet.h>
+#include <unistd.h>
 #include <thread>
 #include <vector>
-#include <unistd.h> //sysconf(_SC_NPROCESSORS_ONLN)，获取系统可用核心数
 #include <cstdio>
 #include <mutex>
 #include <sstream>
@@ -16,6 +16,8 @@ struct client_info  //使用结构体来存储多个客户端的信息（通信�
     struct sockaddr_in client_addr;
 };
 
+bool pool_is_running;
+
 class Connector
 {
 private:
@@ -24,7 +26,6 @@ private:
     bool if_connection_open;
     int max_link;   //最大连接数
     ThreadPool* default_pool;   //开辟在堆区的线程池，方便手动收回
-    bool pool_is_running;
     struct sockaddr_in addr;
     enum connect_exception  //异常信息
     {
@@ -56,6 +57,7 @@ public:
         }
         else
         {
+            pool_is_running = false;
             delete default_pool;
         }
     }
@@ -63,5 +65,6 @@ public:
     void start_connection();
 };
 
+Connector connector;
 
-void client_resolver(client_info*);
+void client_resolver(client_info*); //用于加载到线程池里的全局函数

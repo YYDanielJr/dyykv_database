@@ -91,7 +91,6 @@ class database_manager
 private:
     database* db;
     rw* database_file_manager;
-    std::mutex mtx;
 public:
     database_manager()
     {

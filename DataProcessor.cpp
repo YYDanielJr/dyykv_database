@@ -24,17 +24,52 @@ void PackageResolver::processBuffer(char* raw_buffer)
 
 void PackageResolver::generateReply(char* reply_buffer)
 {
-    reply_head.magic_number = 1234;
-    reply_head.p_type = head.p_type + 3;
+    if(head.magic_number != 1234)
+    {
+        logger.error("Received wrong magic number. Check if the connection is a valid one.");
+        throw(WRONG_MAGIC_NUMBER);
+    }
+    bool bool_returner;
+    std::string string_returner;
+    unsigned int package_size;
+    switch(head.p_type)
+    {
+        case header_info::PUT_REQUEST:
+        {
+            bool_returner = processPutPackage();
+            package_size = 1;
+            break;
+        }
+        case header_info::DELETE_REQUEST:
+        {
+            bool_returner = processDeletePackage();
+            package_size = 1;
+            break;
+        }
+        case header_info::GET_REQUEST:
+        {
+            string_returner = processGetPackage();
+            package_size = 4 + string_returner.length();
+            break;
+        }
+        default:
+        {
+            logger.error("Unknown request type received from the client.");
+            throw(UNKNOWN_REQUEST_TYPE);
+        }
+    }
+    reply_head.magic_number = 1234; //reply的魔数
+    reply_head.p_type = head.p_type + 3;    //reply的类型
     reply_head.zero = 0;
     for(int i = 0; i < 1024; i++)
     {
-        reply_buffer[i] = 0;
+        reply_buffer[i] = 0;    // 初始化reply_buffer
     }
     unsigned int* p = (unsigned int*)reply_buffer;
-    *p = reply_head.magic_number;
+    *p = reply_head.magic_number;   // 把1234传给reply_buffer
     p++;
-    
+    *p = package_size;
+    p++;
     *p = reply_head.p_type;
     p++;
     *p = 0;
@@ -63,6 +98,7 @@ bool PackageResolver::processPutPackage()
         package.value.push_back(raw_package[i]);
     }
     // 接入database
+    std::lock_guard<std::mutex> guarder(pr_mtx);
     return db_manager.put_f(package.key, package.value);
 }
 
@@ -78,6 +114,7 @@ bool PackageResolver::processDeletePackage()
         key.push_back(raw_package[i]);
     }
     // 接入database
+    std::lock_guard<std::mutex> guarder(pr_mtx);
     return db_manager.delete_f(key);
 }
 
@@ -94,6 +131,7 @@ std::string PackageResolver::processGetPackage()
     }
     // 接入database
     std::string value;
+    std::lock_guard<std::mutex> guarder(pr_mtx);
     value = db_manager.get_f(key);
     return value;
 }
