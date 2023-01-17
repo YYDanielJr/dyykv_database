@@ -49,8 +49,8 @@ public:
     bool put_db(std::string &, std::string &);
     bool delete_db(std::string &);
     std::string get_db(std::string &);
-    std::vector<std::string> &traverse(); // 遍历整棵树，是给rw保存文件的接口，返回一个存有string的vector的引用
-    void search_node(node*, std::string, std::vector<std::string>&);    // 用于遍历的递归函数，遍历到的键值对保存到vector中
+    std::vector<std::string> traverse();                              // 遍历整棵树，是给rw保存文件的接口，返回一个存有string的vector的引用
+    void search_node(node *, std::string, std::vector<std::string> &); // 用于遍历的递归函数，遍历到的键值对保存到vector中
 };
 
 class rw // 用来统一管理数据库文件的读写
@@ -70,6 +70,20 @@ public:
         fclose(fp);
         fclose(fp_deletelist);
     }
+    bool if_deletelist_null()
+    {
+        rewind(fp_deletelist);
+        if (fgetc(fp_deletelist) == EOF)
+        {
+            rewind(fp_deletelist);
+            return true;
+        }
+        else
+        {
+            rewind(fp_deletelist);
+            return false;
+        }
+    }
     bool rw_put(std::string &, std::string &);
     bool rw_delete(std::string &);
     // 这里的删除会比put和get复杂得多。
@@ -83,45 +97,26 @@ public:
     // 妈的，这么搞其实蛮烦的。
     // 现在我的想法是，deletelist还会有，存储方式也依旧是这样的存储方式，但是在保存的时候，如果一切正常，会直接通过遍历树的方式保存字段。
     // 如果出现问题，开启程序的时候deletelist应该也会存在，这样的话先加载原先的数据，然后根据deletelist把内存中的已加载的数据进行处理。
-    void save(std::vector<std::string>&);
+    std::vector<std::string> load();
+    std::vector<std::string> load_deletelist();
+    void save(std::vector<std::string> &);
 };
 
 class database_manager
 {
 private:
-    database* db;
-    rw* database_file_manager;
+    database *db;
+    rw *database_file_manager;
+
 public:
     database_manager()
     {
         db = nullptr;
         database_file_manager = nullptr;
     }
-    void start_database_recorder()
-    {
-        db = new database;
-        database_file_manager = new rw;
-    }
-    void shutdown_database_recorder()
-    {
-        std::vector<std::string> temp;
-        if (!db)
-        {
-            temp = db->traverse();
-            delete db;
-        }
-        if (!database_file_manager)
-        {
-            database_file_manager->save(temp);
-            delete database_file_manager;
-        }
-        system("cp ./data/savefile ./data/dyykvdb.db");
-        system("rm ./data/savefile");
-        system("rm ./data/deletelist");
-    }
+    void start_database_recorder();
+    void shutdown_database_recorder();
     bool put_f(std::string &, std::string &);
     bool delete_f(std::string &); // 直接用delete会和c++的关键字重合
     std::string get_f(std::string &);
 };
-
-database_manager db_manager;

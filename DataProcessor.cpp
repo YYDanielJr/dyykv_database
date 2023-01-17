@@ -1,5 +1,8 @@
 #include "include/DataProcessor.h"
 
+extern Logger logger;
+extern database_manager db_manager;
+
 void PackageResolver::processBuffer(char* raw_buffer)
 {
     //处理header

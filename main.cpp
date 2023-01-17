@@ -8,6 +8,10 @@
 #include <chrono>
 #include <termio.h> //监听键盘事件
 
+extern database_manager db_manager;
+extern Logger logger;
+extern Connector connector;
+
 int scanKeyboard()  //通过这个函数实现键盘事件的监听
 {
     // Windows底下有_kbhit()，linux竟然没有，有点恼人
@@ -38,6 +42,7 @@ void listening_keyboard()
             logger.info("Esc key has been pressed. Shutdown command received.");
             connector.shutdown_pool();  //关闭线程池，组织连接
             db_manager.shutdown_database_recorder();    //关闭数据库管理器，做扫尾操作
+            break;
         }
         else
         {
@@ -56,20 +61,33 @@ int main()
     {
         db_manager.start_database_recorder();
     }
-    catch(const std::exception& e)
+    catch(...)
     {
-        std::cerr << e.what() << '\n';
+
+        printf("Database start failed. Exit.\n");
+        return 0;
     }
     
     try
     {
-        connector.start_pool(100);
+        std::thread accept_thread(&Connector::start_connection, &connector);
+        accept_thread.detach();
     }
-    catch(const std::exception& e)
+    catch(const int& connection_exception_type)
     {
-        std::cerr << e.what() << '\n';
+        if(connection_exception_type == Connector::LISTENING_STATUS_ERROR)
+        {
+            logger.error("Listening is not properly set. Ckeck if all listening settings are correct. No application is using port 11451.");
+            printf("Exit.\n");
+            return 0;
+        }
+        if(connection_exception_type == Connector::ACCEPT_ERROR)
+        {
+            logger.error("Acception to a new client failed.");
+        }
     }
     std::thread keyevent_thread(listening_keyboard);    //给键盘监听事件专门分配一个线程
     keyevent_thread.join();
+    printf("Exit.");
     return 0;
 }

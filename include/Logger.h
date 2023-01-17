@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <chrono>
 #include <string>
+#include <mutex>
 
 std::string getTime();
 
@@ -85,5 +86,3 @@ public:
         screen_logger.showError(msg.c_str());
     }
 };
-
-Logger logger;

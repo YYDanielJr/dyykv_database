@@ -1,5 +1,8 @@
 #include "include/TcpWork.h"
 
+extern Logger logger;
+Connector connector(AF_INET, SOCK_STREAM, 0, 100);  //线程池的最大容量为100
+
 Connector::Connector(int domain, int type, int protocol, int max_link_in)
 {
     // 默认构造和拷贝构造被禁用。
@@ -11,7 +14,7 @@ Connector::Connector(int domain, int type, int protocol, int max_link_in)
     // 默认连接端口是11451。
     if_listening_open = false;
     default_pool = nullptr;
-    pool_is_running = false;
+    tcpwork::pool_is_running = false;
     if_connection_open = false;
     max_link = max_link_in;
     std::string temp;
@@ -59,7 +62,7 @@ void Connector::start_connection()
     logger.info("Threadpool ready.");
     while (if_connection_open)
     {
-        client_info *client_new = new client_info;
+        tcpwork::client_info *client_new = new tcpwork::client_info;
         socklen_t addrlen = sizeof(sockaddr_in);
         client_new->sock_for_connection = accept(sock_for_listening, (sockaddr *)&(client_new->client_addr), &addrlen);
         if (client_new->sock_for_connection == -1)
@@ -73,7 +76,7 @@ void Connector::start_connection()
     }
 }
 
-void client_resolver(client_info *client_infomation_ptr)
+void client_resolver(tcpwork::client_info *client_infomation_ptr)
 {
     std::ostringstream msg;
     char ip[24] = {0};
@@ -81,7 +84,7 @@ void client_resolver(client_info *client_infomation_ptr)
     std::string strmsg = msg.str();
     logger.info(strmsg);
     PackageResolver resolver;
-    while (pool_is_running)
+    while (tcpwork::pool_is_running)
     {
         char buffer[1024] = {0};
         try
@@ -100,6 +103,7 @@ void client_resolver(client_info *client_infomation_ptr)
                 char buf2[1024] = {0};
                 resolver.generateReply(buf2);
                 write(client_infomation_ptr->sock_for_connection, &buf2, returner);
+                logger.info("Reply sent.");
             }
             else if(returner == 0)
             {
@@ -112,7 +116,7 @@ void client_resolver(client_info *client_infomation_ptr)
         }
         catch (const std::exception &e)
         {
-            std::cerr << e.what() << '\n';
+            
         }
     }
 }
