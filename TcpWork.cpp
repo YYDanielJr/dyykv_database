@@ -3,6 +3,8 @@
 extern Logger logger;
 Connector connector(AF_INET, SOCK_STREAM, 0, 100);  //线程池的最大容量为100
 
+bool pool_is_running;
+
 Connector::Connector(int domain, int type, int protocol, int max_link_in)
 {
     // 默认构造和拷贝构造被禁用。
@@ -14,7 +16,7 @@ Connector::Connector(int domain, int type, int protocol, int max_link_in)
     // 默认连接端口是11451。
     if_listening_open = false;
     default_pool = nullptr;
-    tcpwork::pool_is_running = false;
+    pool_is_running = false;
     if_connection_open = false;
     max_link = max_link_in;
     std::string temp;
@@ -37,7 +39,7 @@ Connector::Connector(int domain, int type, int protocol, int max_link_in)
     int returner = bind(sock_for_listening, (sockaddr *)&addr, sizeof(addr)); // 绑定
     if (returner == -1)
     {
-        logger.error("Something went wrong when binding listening socket with local IP.");
+        logger.error("Something went wrong when binding listening socket with local IP. Check and kill the program using port 11451.");
         throw(BIND_ERROR);
     }
     logger.info("Binded successfully. Connect to the server via port 11451.");
@@ -62,7 +64,7 @@ void Connector::start_connection()
     logger.info("Threadpool ready.");
     while (if_connection_open)
     {
-        tcpwork::client_info *client_new = new tcpwork::client_info;
+        client_info *client_new = new client_info;
         socklen_t addrlen = sizeof(sockaddr_in);
         client_new->sock_for_connection = accept(sock_for_listening, (sockaddr *)&(client_new->client_addr), &addrlen);
         if (client_new->sock_for_connection == -1)
@@ -76,7 +78,7 @@ void Connector::start_connection()
     }
 }
 
-void client_resolver(tcpwork::client_info *client_infomation_ptr)
+void client_resolver(client_info *client_infomation_ptr)
 {
     std::ostringstream msg;
     char ip[24] = {0};
@@ -84,9 +86,10 @@ void client_resolver(tcpwork::client_info *client_infomation_ptr)
     std::string strmsg = msg.str();
     logger.info(strmsg);
     PackageResolver resolver;
-    while (tcpwork::pool_is_running)
+    while (pool_is_running)
     {
         char buffer[1024] = {0};
+        memset(buffer, 0, 1024);
         try
         {
             int returner = read(client_infomation_ptr->sock_for_connection, buffer, sizeof(buffer));
@@ -97,8 +100,21 @@ void client_resolver(tcpwork::client_info *client_infomation_ptr)
             // header的第三组4个字节同样是一个unsigned int数，是本次传输的类型，从0到5，一共有6种，下面会具体说明。
             // header的第四组4字节全为0。
             // 接收的时候需要填充16字节的header，给客户端回发的时候也需要有这16字节的header。
-            if(returner > 0)
+            printf("Read: %d\n", returner);
+            if(returner >= 16)
             {
+                int psize = resolver.getPackageSize(buffer);
+                while(returner - 16 < psize)
+                {
+                    char p_buffer[1008] = {0};
+                    int ret2 = read(client_infomation_ptr->sock_for_connection, p_buffer, sizeof(p_buffer));
+                    printf("Read2: %d\n", ret2);
+                    for(int i = returner; i < returner + ret2; i++)
+                    {
+                        buffer[i] = p_buffer[i - returner];
+                    }
+                    returner += ret2;
+                }
                 resolver.processBuffer(buffer);
                 char buf2[1024] = {0};
                 resolver.generateReply(buf2);
@@ -108,15 +124,17 @@ void client_resolver(tcpwork::client_info *client_infomation_ptr)
             else if(returner == 0)
             {
                 logger.error("Connection to a client is missing. This connection will be closed.");
+                break;
             }
             else
             {
                 logger.error("Error occurred when reading from client.");
+                continue;
             }
         }
-        catch (const std::exception &e)
+        catch (...)
         {
-            
+            continue;
         }
     }
 }

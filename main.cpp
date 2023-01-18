@@ -63,7 +63,6 @@ int main()
     }
     catch(...)
     {
-
         printf("Database start failed. Exit.\n");
         return 0;
     }

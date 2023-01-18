@@ -4,6 +4,7 @@
 #include "DataBase.h"
 #include <string>
 #include <mutex>
+#include <sstream>
 namespace header_info   //这个namespace里定义一个header结构体和一个package_type的枚举
 {
     struct header   //Tcp通信的header
@@ -40,6 +41,7 @@ public:
         UNKNOWN_REQUEST_TYPE = 0
     };  
     void processBuffer(char*);  //传入读到的原始缓冲区
+    unsigned int getPackageSize(char*);
     bool processPutPackage();
     bool processDeletePackage();
     std::string processGetPackage();

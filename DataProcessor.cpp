@@ -5,6 +5,8 @@ extern database_manager db_manager;
 
 void PackageResolver::processBuffer(char* raw_buffer)
 {
+    memset(raw_header, 0, 16);
+    memset(raw_package, 0, 1008);
     //处理header
     for (int i = 0; i < 16; i++)
     {
@@ -13,16 +15,27 @@ void PackageResolver::processBuffer(char* raw_buffer)
     unsigned int* data_p = (unsigned int*)raw_header;
     head.magic_number = *data_p;
     data_p++;
-    head.p_type = *data_p;
-    data_p++;
     head.package_length = *data_p;
+    data_p++;
+    head.p_type = *data_p;
     data_p++;
     head.zero = *data_p;
     //处理数据域
-    for (int i = 0; i < head.package_length; i++)
+    for (int i = 0; i < head.package_length && i < 1008; i++)
     {
         raw_package[i] = raw_buffer[i + 16];
+        //调试代码
+        printf("%d ", raw_package[i]);
     }
+    //调试代码
+    printf("\n%d %d %d %d\n", head.magic_number, head.package_length, head.p_type, head.zero);
+}
+
+unsigned int PackageResolver::getPackageSize(char* raw_buffer)
+{
+    unsigned int* data_p = (unsigned int*)raw_buffer;
+    data_p++;
+    return *data_p;
 }
 
 void PackageResolver::generateReply(char* reply_buffer)
@@ -30,6 +43,9 @@ void PackageResolver::generateReply(char* reply_buffer)
     if(head.magic_number != 1234)
     {
         logger.error("Received wrong magic number. Check if the connection is a valid one.");
+        std::ostringstream mnum;
+        mnum << "Data: " << head.magic_number << ", " << head.package_length << ", " << head.p_type << ", " << head.zero << ".";
+        logger.error(mnum.str());
         throw(WRONG_MAGIC_NUMBER);
     }
     bool bool_returner;
@@ -76,6 +92,17 @@ void PackageResolver::generateReply(char* reply_buffer)
     *p = reply_head.p_type;
     p++;
     *p = 0;
+    p++;
+    if(string_returner.size() != 0)
+    {
+        *p = string_returner.size();
+        p++;
+        strcat((char*)p, string_returner.c_str());
+    }
+    else
+    {
+        *p = bool_returner;
+    }
 }
 
 bool PackageResolver::processPutPackage()

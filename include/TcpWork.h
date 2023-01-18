@@ -11,15 +11,12 @@
 #include "Logger.h"
 #include "DataProcessor.h"
 
-namespace tcpwork
+extern bool pool_is_running;
+struct client_info  //使用结构体来存储多个客户端的信息（通信文件标识符和客户端地址）
 {
-    struct client_info  //使用结构体来存储多个客户端的信息（通信文件标识符和客户端地址）
-    {
-        int sock_for_connection; // 连接套接字的文件标识符
-        struct sockaddr_in client_addr;
-    };
-    bool pool_is_running;
-}
+    int sock_for_connection; // 连接套接字的文件标识符
+    struct sockaddr_in client_addr;
+};
 
 class Connector
 {
@@ -50,17 +47,17 @@ public:
     void start_pool(int maxlink)
     {
         default_pool = new ThreadPool(maxlink);
-        tcpwork::pool_is_running = true;
+        pool_is_running = true;
     }
     void shutdown_pool()
     {
-        if (!tcpwork::pool_is_running)
+        if (!pool_is_running)
         {
             throw(POOL_IS_NOT_RUNNING);
         }
         else
         {
-            tcpwork::pool_is_running = false;
+            pool_is_running = false;
             delete default_pool;
         }
     }
@@ -68,4 +65,4 @@ public:
     void start_connection();
 };
 
-void client_resolver(tcpwork::client_info *); // 用于加载到线程池里的全局函数
+void client_resolver(client_info *); // 用于加载到线程池里的全局函数

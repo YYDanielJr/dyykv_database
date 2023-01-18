@@ -2,11 +2,16 @@
 // 这个文件用来处理数据库的读写。
 #include <string>
 #include <mutex>
+#include <chrono>
 #include <vector>
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
+#include <fstream>
+#include <sstream>
 #include "Logger.h"
+
+extern Logger logger;
 
 class database // 统一管理数据库内存数据的读写
 {
@@ -56,33 +61,54 @@ public:
 class rw // 用来统一管理数据库文件的读写
 {
 private:
-    FILE *fp;
-    FILE *fp_deletelist;
-
+    std::ofstream db_writer;
+    std::ofstream deletelist_writer;
+    std::ifstream db_reader;
+    std::ifstream deletelist_reader;
 public:
     rw()
     {
-        fp = fopen("data/dyykvdb.db", "a+");
-        fp_deletelist = fopen("data/deletelist", "a+");
+        db_reader.open("dyykvdb.db", std::ios::in);
+        if(!db_reader.is_open())
+        {
+            logger.info("Local database is not exist. A new database file will be created.");
+        }
+        db_writer.open("dyykvdb.db", std::ios::app);
+        if(!db_reader.is_open())
+        {
+            db_reader.open("dyykvdb.db", std::ios::in);
+        }
+
+        deletelist_reader.open("deletelist", std::ios::in);
+        if(deletelist_reader.is_open())
+        {
+            logger.info("Server seemed to be shut down unexpectedly last time. We will try to restore your data soon.");
+            deletelist_reader.close();
+        }
+        deletelist_writer.open("deletelist", std::ios::app);
+        deletelist_reader.open("deletelist", std::ios::in);
     }
     ~rw()
     {
-        fclose(fp);
-        fclose(fp_deletelist);
+        db_reader.close();
+        db_writer.close();
+        deletelist_reader.close();
+        deletelist_writer.close();
     }
     bool if_deletelist_null()
     {
-        rewind(fp_deletelist);
-        if (fgetc(fp_deletelist) == EOF)
+        char c;
+        deletelist_reader >> c;
+        if(deletelist_reader.eof())
         {
-            rewind(fp_deletelist);
+            db_reader.seekg(std::ios::beg);
             return true;
         }
         else
         {
-            rewind(fp_deletelist);
+            db_reader.seekg(std::ios::beg);
             return false;
-        }
+        } 
     }
     bool rw_put(std::string &, std::string &);
     bool rw_delete(std::string &);

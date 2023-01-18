@@ -4,35 +4,34 @@
 #include <chrono>
 #include <string>
 #include <mutex>
+#include <fstream>
 
 std::string getTime();
 
 class FileLogger
 {
 private:
-    FILE* logfile;
+    std::ofstream logfile;
 public:
     FileLogger()
     {
-        logfile = fopen("dyykvdb_log.txt", "w");
+        logfile.open("dyykvdb_log.txt", std::ios::out);
     }
     ~FileLogger()
     {
-        if(logfile)
+        if(logfile.is_open())
         {
-            fclose(logfile);
+            logfile.close();
         }
     }
     
     void writeInfo(const char* msg)
     {
-        fprintf(logfile, "[ %s ] ", getTime().c_str());
-        fprintf(logfile, "%s\n", msg);
+        logfile << "[ " << getTime().c_str() << " ] " << msg << std::endl;
     }
     void writeError(const char* msg)
     {
-        fprintf(logfile, "[ %s ] ", getTime().c_str());
-        fprintf(logfile, "(E)%s\n", msg);
+        logfile << "[ " << getTime().c_str() << " ] (ERR)" << msg << std::endl;
     }
 };
 

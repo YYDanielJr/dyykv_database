@@ -91,34 +91,48 @@ void database::search_node(node *p, std::string key, std::vector<std::string> &s
 
 bool rw::rw_put(std::string &key, std::string &value)
 {
-    fputs(key.c_str(), fp);
-    fputc('\n', fp);
-    fputs(value.c_str(), fp);
-    fputc('\n', fp);
+    try
+    {
+        db_writer << key << std::endl
+                  << value << std::endl;
+    }
+    catch (...)
+    {
+        return false;
+    }
     return true;
 }
 
 bool rw::rw_delete(std::string &key)
 {
-    fputs(key.c_str(), fp_deletelist);
-    fputc('\n', fp_deletelist);
+    try
+    {
+        deletelist_writer << key << std::endl;
+    }
+    catch (...)
+    {
+        return false;
+    }
     return true;
 }
 
 std::vector<std::string> rw::load()
 {
     std::vector<std::string> temp;
-    while (1)
+    char c;
+    db_reader >> c;
+    if (db_reader.eof())
     {
-        char buffer[1024] = {0};
-        if (fgets(buffer, 1024, fp) != NULL)
+        return temp;
+    }
+    db_reader.seekg(std::ios::beg);
+    while (!db_reader.eof())
+    {
+        char buf[1024] = {0};
+        db_reader.getline(buf, 1024);
+        if (buf[0] != 0 && buf[0] != '\n')
         {
-            temp.push_back(buffer);
-            memset(buffer, 0, 1024);
-        }
-        else
-        {
-            break;
+            temp.push_back(buf);
         }
     }
     return temp;
@@ -127,17 +141,20 @@ std::vector<std::string> rw::load()
 std::vector<std::string> rw::load_deletelist()
 {
     std::vector<std::string> temp;
-    while (1)
+    char c;
+    deletelist_reader >> c;
+    if (deletelist_reader.eof())
     {
-        char buffer[1024] = {0};
-        if (fgets(buffer, 1024, fp_deletelist) != NULL)
+        return temp;
+    }
+    deletelist_reader.seekg(std::ios::beg);
+    while (!deletelist_reader.eof())
+    {
+        char buf[1024] = {0};
+        deletelist_reader.getline(buf, 1024);
+        if (buf[0] != 0 && buf[0] != '\n')
         {
-            temp.push_back(buffer);
-            memset(buffer, 0, 1024);
-        }
-        else
-        {
-            break;
+            temp.push_back(buf);
         }
     }
     return temp;
@@ -145,13 +162,12 @@ std::vector<std::string> rw::load_deletelist()
 
 void rw::save(std::vector<std::string> &key_value)
 {
-    FILE *fp_save = fopen("data/savefile", "w");
-    for (int i = 0; i < key_value.size(); i++)
+    db_writer.close();
+    db_writer.open("dyykvdb.db", std::ios::out);
+    for (auto i = key_value.begin(); i <= key_value.end(); i++)
     {
-        fputs(key_value.at(i).c_str(), fp_save);
-        fputc('\n', fp_save);
+        db_writer << *i << std::endl;
     }
-    fclose(fp_save);
 }
 
 // --------------------接口函数--------------------------
@@ -160,27 +176,42 @@ void database_manager::start_database_recorder()
 {
     db = new database;
     database_file_manager = new rw;
-    std::vector<std::string> temp = database_file_manager->load();
-    auto i = temp.begin();
-    while (i <= temp.end())
+    try
     {
-        db->put_db(*i, *(i + 1));
-        i += 2;
-    }
-    logger.info("Local database file loaded.");
-    temp.clear();
-    if (!database_file_manager->if_deletelist_null())
-    {
-        logger.info("Detected delete list. This may happen if server shut down unexpectedly last time.");
-        logger.info("Recovering...");
-        temp = database_file_manager->load_deletelist();
-        i = temp.begin();
-        while (i <= temp.end())
+        std::vector<std::string> temp = database_file_manager->load();
+        if (temp.size() > 0)
         {
-            db->delete_db(*i);
-            i++;
+            auto i = temp.begin();
+            while (i <= temp.end())
+            {
+                db->put_db(*i, *(i + 1));
+                i += 2;
+            }
+            logger.info("Local database file loaded.");
         }
-        logger.info("Recovered.");
+        temp.clear();
+    }
+    catch (std::exception &e)
+    {
+        logger.error("Exception received when loading local file. A new file will be created.");
+    }
+    try
+    {
+        if (!database_file_manager->if_deletelist_null())
+        {
+            std::vector<std::string> temp = database_file_manager->load_deletelist();
+            auto i = temp.begin();
+            while (i <= temp.end())
+            {
+                db->delete_db(*i);
+                i++;
+            }
+            logger.info("Recovered.");
+        }
+    }
+    catch (...)
+    {
+        logger.error("Exception received when loading exist deletelist.");
     }
     logger.info("Database set up successfully.");
 }
@@ -198,15 +229,16 @@ void database_manager::shutdown_database_recorder()
         database_file_manager->save(temp);
         delete database_file_manager;
     }
-    system("cp ./data/savefile ./data/dyykvdb.db");
-    system("rm ./data/savefile");
-    system("rm ./data/deletelist");
-    logger.info("Database shutt down successfully.");
+    system("rm ./deletelist");
+    logger.info("Database shut down successfully.");
 }
 
 bool database_manager::put_f(std::string &key, std::string &value)
 {
-    logger.info("Put request received.");
+    std::ostringstream lg;
+    lg << "Put request received. Key is " << key << ", value is " << value << ".";
+    std::string temp = lg.str();
+    logger.info(temp);
     bool returner = db->put_db(key, value);
     database_file_manager->rw_put(key, value);
     return returner;
@@ -214,7 +246,10 @@ bool database_manager::put_f(std::string &key, std::string &value)
 
 bool database_manager::delete_f(std::string &key)
 {
-    logger.info("Delete request received.");
+    std::ostringstream lg;
+    lg << "Delete request received. Key is " << key << ".";
+    std::string temp = lg.str();
+    logger.info(temp);
     bool returner = db->delete_db(key);
     database_file_manager->rw_delete(key);
     return returner;
@@ -222,7 +257,10 @@ bool database_manager::delete_f(std::string &key)
 
 std::string database_manager::get_f(std::string &key)
 {
-    logger.info("Get request received.");
+    std::ostringstream lg;
+    lg << "Get request received. Key is " << key << ".";
+    std::string temp = lg.str();
+    logger.info(temp);
     std::string value = db->get_db(key);
     return value;
 }
