@@ -76,6 +76,8 @@ void Connector::start_connection()
         logger.info("A new connection has been accepted.");
         logger.info("Connection pushed into threadpool successfully.");
     }
+    close(sock_for_listening);
+    logger.info("Listening socket closed successfully.");
 }
 
 void client_resolver(client_info *client_infomation_ptr)
@@ -101,13 +103,13 @@ void client_resolver(client_info *client_infomation_ptr)
             // header的第四组4字节全为0。
             // 接收的时候需要填充16字节的header，给客户端回发的时候也需要有这16字节的header。
             printf("Read: %d\n", returner);
-            if(returner >= 16)
+            if(returner >= 16)  // 暂时还没有遇见过连16字节的头都无法完全传输进来的情况
             {
-                int psize = resolver.getPackageSize(buffer);
-                while(returner - 16 < psize)
+                int psize = resolver.getPackageSize(buffer);    // 提取出包大小
+                while(returner - 16 < psize)    // 如果已经接受到的数据没有达到包大小
                 {
                     char p_buffer[1008] = {0};
-                    int ret2 = read(client_infomation_ptr->sock_for_connection, p_buffer, sizeof(p_buffer));
+                    int ret2 = read(client_infomation_ptr->sock_for_connection, p_buffer, sizeof(p_buffer));    // 就继续读，直到完全读完
                     printf("Read2: %d\n", ret2);
                     for(int i = returner; i < returner + ret2; i++)
                     {
@@ -126,8 +128,8 @@ void client_resolver(client_info *client_infomation_ptr)
                 {
                     printf("%d ", buf2[i]);
                 }
-                printf("\n");
-                write(client_infomation_ptr->sock_for_connection, &buf2, returner);
+                printf("\n");   // 到这里把我即将返回的响应内容输出一遍
+                write(client_infomation_ptr->sock_for_connection, &buf2, returner); // 然后进行响应
                 logger.info("Reply sent.");
             }
             else if(returner == 0)
@@ -146,4 +148,6 @@ void client_resolver(client_info *client_infomation_ptr)
             continue;
         }
     }
+    close(client_infomation_ptr->sock_for_connection);
+    logger.info("Connection socket closed successfully.");
 }
