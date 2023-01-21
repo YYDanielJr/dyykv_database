@@ -201,9 +201,9 @@ std::vector<std::string> rw::load_deletelist()
 void rw::save(std::vector<std::string> &key_value)
 {
     std::ofstream saver("savefile", std::ios::out);
-    for (auto i = key_value.begin(); i <= key_value.end(); i++)
+    for(int i = 0; i < key_value.size(); i++)
     {
-        saver << *i << std::endl;
+        saver << key_value[i] << std::endl;
     }
     saver.close();
 }
