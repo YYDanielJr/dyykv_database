@@ -128,7 +128,6 @@ bool PackageResolver::processPutPackage()
         package.value.push_back(raw_package[i]);
     }
     // 接入database
-    std::lock_guard<std::mutex> guarder(pr_mtx);
     return db_manager.put_f(package.key, package.value);
 }
 
@@ -144,7 +143,6 @@ bool PackageResolver::processDeletePackage()
         key.push_back(raw_package[i]);
     }
     // 接入database
-    std::lock_guard<std::mutex> guarder(pr_mtx);
     return db_manager.delete_f(key);
 }
 
@@ -161,7 +159,6 @@ std::string PackageResolver::processGetPackage()
     }
     // 接入database
     std::string value;
-    std::lock_guard<std::mutex> guarder(pr_mtx);
     value = db_manager.get_f(key);
     return value;
 }
