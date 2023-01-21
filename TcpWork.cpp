@@ -102,7 +102,6 @@ void client_resolver(client_info *client_infomation_ptr)
             // header的第三组4个字节同样是一个unsigned int数，是本次传输的类型，从0到5，一共有6种，下面会具体说明。
             // header的第四组4字节全为0。
             // 接收的时候需要填充16字节的header，给客户端回发的时候也需要有这16字节的header。
-            printf("Read: %d\n", returner);
             if(returner >= 16)  // 暂时还没有遇见过连16字节的头都无法完全传输进来的情况
             {
                 int psize = resolver.getPackageSize(buffer);    // 提取出包大小
@@ -110,7 +109,6 @@ void client_resolver(client_info *client_infomation_ptr)
                 {
                     char p_buffer[1008] = {0};
                     int ret2 = read(client_infomation_ptr->sock_for_connection, p_buffer, sizeof(p_buffer));    // 就继续读，直到完全读完
-                    printf("Read2: %d\n", ret2);
                     for(int i = returner; i < returner + ret2; i++)
                     {
                         buffer[i] = p_buffer[i - returner];
@@ -120,16 +118,14 @@ void client_resolver(client_info *client_infomation_ptr)
                 resolver.processBuffer(buffer);
                 char buf2[1024] = {0};
                 resolver.generateReply(buf2);
-                //调试代码
-                printf("Reply: ");
                 unsigned int *p = (unsigned int*)buf2;
                 p++;
                 for(int i = 0; i < *p + 16; i++)
                 {
                     printf("%d ", buf2[i]);
                 }
-                printf("\n");   // 到这里把我即将返回的响应内容输出一遍
-                write(client_infomation_ptr->sock_for_connection, &buf2, returner); // 然后进行响应
+                printf("\n");
+                write(client_infomation_ptr->sock_for_connection, &buf2, *p + 16); 
                 logger.info("Reply sent.");
             }
             else if(returner == 0)

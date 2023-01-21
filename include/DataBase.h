@@ -62,9 +62,9 @@ class rw // 用来统一管理数据库文件的读写
 {
 private:
     std::ofstream db_writer;
-    std::ofstream deletelist_writer;
+    //std::ofstream deletelist_writer;
     std::ifstream db_reader;
-    std::ifstream deletelist_reader;
+    //std::ifstream deletelist_reader;
 public:
     rw()
     {
@@ -79,6 +79,7 @@ public:
             db_reader.open("dyykvdb.db", std::ios::in);
         }
 
+        /*
         deletelist_reader.open("deletelist", std::ios::in);
         if(deletelist_reader.is_open())
         {
@@ -87,14 +88,16 @@ public:
         }
         deletelist_writer.open("deletelist", std::ios::app);
         deletelist_reader.open("deletelist", std::ios::in);
+        */
     }
     ~rw()
     {
         db_reader.close();
         db_writer.close();
-        deletelist_reader.close();
-        deletelist_writer.close();
+        //deletelist_reader.close();
+        //deletelist_writer.close();
     }
+    /*
     bool if_deletelist_null()
     {
         char c;
@@ -110,8 +113,9 @@ public:
             return false;
         } 
     }
+    */
     bool rw_put(std::string &, std::string &);
-    bool rw_delete(std::string &);
+    bool rw_delete(std::string &, std::string &);
     // 这里的删除会比put和get复杂得多。
     // 因为按照我的构想，在文件内的数据就只是键-值这样一对一对地简单排放，没有数据结构。
     // 我的想法是，如果有删除命令，先在内存中把那个key的映射删除掉，然后建立一个deletelist文件。
@@ -124,7 +128,7 @@ public:
     // 现在我的想法是，deletelist还会有，存储方式也依旧是这样的存储方式，但是在保存的时候，如果一切正常，会直接通过遍历树的方式保存字段。
     // 如果出现问题，开启程序的时候deletelist应该也会存在，这样的话先加载原先的数据，然后根据deletelist把内存中的已加载的数据进行处理。
     std::vector<std::string> load();
-    std::vector<std::string> load_deletelist();
+    //std::vector<std::string> load_deletelist();
     void save(std::vector<std::string> &);
 };
 

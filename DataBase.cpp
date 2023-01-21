@@ -2,6 +2,7 @@
 
 extern Logger logger;
 database_manager db_manager;
+std::mutex db_mutex;
 
 // --------------------内存管理的成员函数------------------------
 
@@ -9,6 +10,7 @@ bool database::put_db(std::string &key, std::string &value)
 {
     //测试代码
     //printf("Put: %s, %s\n", key.c_str(), value.c_str());
+    std::lock_guard<std::mutex> guarder(db_mutex);
     try
     {
         node *p = root;
@@ -44,6 +46,7 @@ bool database::put_db(std::string &key, std::string &value)
 
 bool database::delete_db(std::string &key)
 {
+    std::lock_guard<std::mutex> guarder(db_mutex);
     node *p = root;
     for (int i = 0; i < key.length(); i++)
     {
@@ -54,6 +57,7 @@ bool database::delete_db(std::string &key)
             {
                 if_found_child = true;
                 p = p->next.at(j);
+                break;
             }
         }
         if(!if_found_child)
@@ -75,6 +79,7 @@ bool database::delete_db(std::string &key)
 std::string database::get_db(std::string &key)
 {
     std::string returner;   //一个空的string，如果在搜索过程中间确定不存在就返回这个空的string
+    std::lock_guard<std::mutex> guarder(db_mutex);
     node *p = root;
     for (int i = 0; i < key.length(); i++)
     {
@@ -85,6 +90,7 @@ std::string database::get_db(std::string &key)
             {
                 if_found_child = true;
                 p = p->next.at(j);
+                break;
             }
         }
         if(!if_found_child)
@@ -132,7 +138,8 @@ bool rw::rw_put(std::string &key, std::string &value)
     try
     {
         db_writer << key << std::endl
-                  << value << std::endl;
+                  << value << std::endl
+                  << "1" << std::endl;
     }
     catch (...)
     {
@@ -141,11 +148,11 @@ bool rw::rw_put(std::string &key, std::string &value)
     return true;
 }
 
-bool rw::rw_delete(std::string &key)
+bool rw::rw_delete(std::string &key, std::string &value)
 {
     try
     {
-        deletelist_writer << key << std::endl;
+        db_writer << key << std::endl << value << std::endl << "0" << std::endl;
     }
     catch (...)
     {
@@ -176,6 +183,7 @@ std::vector<std::string> rw::load()
     return temp;
 }
 
+/*
 std::vector<std::string> rw::load_deletelist()
 {
     std::vector<std::string> temp;
@@ -197,13 +205,21 @@ std::vector<std::string> rw::load_deletelist()
     }
     return temp;
 }
+*/
 
 void rw::save(std::vector<std::string> &key_value)
 {
     std::ofstream saver("savefile", std::ios::out);
+    int count = 0;
     for(int i = 0; i < key_value.size(); i++)
     {
         saver << key_value[i] << std::endl;
+        count++;
+        if(count == 2)
+        {
+            saver << "1" << std::endl;
+            count = 0;
+        }
     }
     saver.close();
 }
@@ -219,11 +235,22 @@ void database_manager::start_database_recorder()
         std::vector<std::string> temp = database_file_manager->load();
         if (temp.size() > 0)
         {
-            for(int i = 0; i < temp.size(); i += 2)
+            for(int i = 0; i < temp.size(); i += 3)
             {
                 if(i + 1 < temp.size() && (temp[i][0] >= 32 && temp[i][0] <= 126))  //避免数组越界或者读入空字符
                 {
-                    db->put_db(temp[i], temp[i + 1]);
+                    if(temp[i + 2] == "1")
+                    {
+                        db->put_db(temp[i], temp[i + 1]);
+                    }
+                    else if(temp[i + 2] == "0")
+                    {
+                        db->delete_db(temp[i]);
+                    }
+                    else
+                    {
+                        throw(0);   //0代表db文件出现问题
+                    }
                 }
             }
             logger.info("Local database file loaded.");
@@ -234,6 +261,7 @@ void database_manager::start_database_recorder()
     {
         logger.error("Exception received when loading local file. A new file will be created.");
     }
+    /*
     try
     {
         if (!database_file_manager->if_deletelist_null())
@@ -262,6 +290,7 @@ void database_manager::start_database_recorder()
     {
         logger.error("Exception received when loading exist deletelist.");
     }
+    */
     logger.info("Database set up successfully.");
 }
 
@@ -288,7 +317,7 @@ void database_manager::shutdown_database_recorder()
         database_file_manager->save(temp);
         delete database_file_manager;
     }
-    system("rm ./deletelist");
+    //system("rm ./deletelist");
     system("cp savefile dyykvdb.db");
     system("rm savefile");
     logger.info("Database shut down successfully.");
@@ -311,8 +340,10 @@ bool database_manager::delete_f(std::string &key)
     lg << "Delete request received. Key is " << key << ".";
     std::string temp = lg.str();
     logger.info(temp);
+    temp.clear();
+    temp = db->get_db(key);
     bool returner = db->delete_db(key);
-    database_file_manager->rw_delete(key);
+    database_file_manager->rw_delete(key, temp);
     return returner;
 }
 
