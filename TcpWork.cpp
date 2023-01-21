@@ -118,6 +118,15 @@ void client_resolver(client_info *client_infomation_ptr)
                 resolver.processBuffer(buffer);
                 char buf2[1024] = {0};
                 resolver.generateReply(buf2);
+                //调试代码
+                printf("Reply: ");
+                unsigned int *p = (unsigned int*)buf2;
+                p++;
+                for(int i = 0; i < *p + 16; i++)
+                {
+                    printf("%d ", buf2[i]);
+                }
+                printf("\n");
                 write(client_infomation_ptr->sock_for_connection, &buf2, returner);
                 logger.info("Reply sent.");
             }

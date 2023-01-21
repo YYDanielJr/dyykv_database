@@ -55,7 +55,7 @@ public:
     bool delete_db(std::string &);
     std::string get_db(std::string &);
     std::vector<std::string> traverse();                              // 遍历整棵树，是给rw保存文件的接口，返回一个存有string的vector的引用
-    void search_node(node *, std::string, std::vector<std::string> &); // 用于遍历的递归函数，遍历到的键值对保存到vector中
+    void search_node(node *, std::string &, std::vector<std::string> &); // 用于遍历的递归函数，遍历到的键值对保存到vector中
 };
 
 class rw // 用来统一管理数据库文件的读写
