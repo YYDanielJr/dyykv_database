@@ -8,12 +8,12 @@ std::mutex db_mutex;
 
 bool database::put_db(std::string &key, std::string &value)
 {
-    //测试代码
-    //printf("Put: %s, %s\n", key.c_str(), value.c_str());
-    std::lock_guard<std::mutex> guarder(db_mutex);
+    //std::lock_guard<std::mutex> guarder(db_mutex);
     try
     {
+        db_mutex.lock();
         node *p = root;
+        db_mutex.unlock();
         for (int i = 0; i < key.length(); i++) // 第一层循环，循环key的长度次
         {
             bool if_exist = false;
@@ -46,8 +46,10 @@ bool database::put_db(std::string &key, std::string &value)
 
 bool database::delete_db(std::string &key)
 {
-    std::lock_guard<std::mutex> guarder(db_mutex);
+    //std::lock_guard<std::mutex> guarder(db_mutex);
+    db_mutex.lock();
     node *p = root;
+    db_mutex.unlock();
     for (int i = 0; i < key.length(); i++)
     {
         bool if_found_child = false;
@@ -79,8 +81,10 @@ bool database::delete_db(std::string &key)
 std::string database::get_db(std::string &key)
 {
     std::string returner;   //一个空的string，如果在搜索过程中间确定不存在就返回这个空的string
-    std::lock_guard<std::mutex> guarder(db_mutex);
+    //std::lock_guard<std::mutex> guarder(db_mutex);
+    db_mutex.lock();
     node *p = root;
+    db_mutex.unlock();
     for (int i = 0; i < key.length(); i++)
     {
         bool if_found_child = false;
