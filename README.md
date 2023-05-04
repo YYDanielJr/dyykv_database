@@ -6,7 +6,7 @@
 如果需要关闭程序，确保焦点在服务器的运行终端，然后按下esc键。
 
 ## 编译方法：
-先提前在Linux环境上安装好cmake：
+先提前在Linux环境上安装好cmake（以debian系的Linux环境为例）：
 ```
 sudo apt update
 sudo apt install cmake
